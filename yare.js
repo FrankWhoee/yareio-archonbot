@@ -1,4 +1,3 @@
-
 if(tick == 0){
 	d1 = distance(star_zxq.position,base.position)
 	d2 = distance(star_a1c.position,base.position)
@@ -12,6 +11,11 @@ console.log("attackers: " + report.attackers)
 console.log("tick: " + tick)
 defenders = get_role("defender")
 
+// Control Panel
+ALL_ATTACK = false
+ALL_DEFEND = false
+
+
 if(tick < 20){
     a = 0
 }else{
@@ -22,15 +26,38 @@ if(memory.star.energy < 100){
 	memory.harvest_middle = true
 }
 
-for(i = 0; i < my_spirits.length; i++){
+for(i = a; i < my_spirits.length; i++){
     s = my_spirits[i]
 	if(s.mark == ""){
 		assign_role(s)
 	}
     role = s.mark.split("-")[0]
-    if(s.sight.enemies.length > 0 && s.energy > 2){
-        s.move(spirits[s.sight.enemies[0]].position)
+    if(s.sight.enemies.length > 0){
+    	if(s.energy > 0){
+	        s.move(spirits[s.sight.enemies[0]].position)
 		s.energize(s.sight.enemies[0])
+    	}else if(s.sight.enemies_beamable.length > 0){
+    		enemy = spirits[s.sight.enemies_beamable[0]].position
+    		escape_vector = [s.position[0] - (enemy[0] + 2* memory.star.position[0])/3, s.position[1] - (enemy[1] + 2 * memory.star.position[1])/3]
+    		target = [s.position[0] + escape_vector[0],s.position[1] + escape_vector[1]]
+    		s.move(target)
+    		s.energize(s)
+    	}else{
+    	switch(role) {
+			case "harvester":
+				harvest(s,role)
+				break;
+			case "defender":
+				defend(s,role)
+				break;
+			case "attacker":
+				attack(s,role)
+				break;
+			default:
+				harvest(s,role)
+		}
+    	}
+    	
     }else{
        switch(role) {
 			case "harvester":
@@ -53,7 +80,7 @@ for(i = 0; i < my_spirits.length; i++){
 function attack(s,role){
     if(s.energy > 0){
     	report = role_report()
-    	if((report.attackers < 5 && tick < 500) || (report.attackers < 20 && tick > 500)){
+    	if((report.attackers < 5 && tick < 500) || (report.attackers < 20 && tick > 500 && tick < 1500) || (report.attackers < 75 && tick > 1500)){
     		if(s.energy < s.energy_capacity){
     			s.move(memory.star.position)
     			s.energize(s)
@@ -70,7 +97,11 @@ function attack(s,role){
     		}
     	}else{
     		s.move(enemy_base.position)
-    		s.energize(enemy_base)
+    		if(distance(enemy_base.position, s.position) > 300){
+    		    s.energize(s)
+    		}else{
+    		    s.energize(enemy_base)
+    		}
     	}
     }else{
         s.set_mark("harvester-harvesting")
@@ -107,25 +138,33 @@ function defend(s,role){
 }	
 	
 for(i=0;i<a;i++){
-        s1 = my_spirits[i]
-        if(s1.energy == 0){
-			s1.set_mark("harvester-harvesting")
-		}else if(s1.energy == s.energy_capacity){
-			s1.set_mark("harvester-dumping")
+        s = my_spirits[i]
+        
+        if(s.sight.enemies.length > 0){
+    		enemy = spirits[s.sight.enemies[0]].position
+    		escape_vector = [s.position[0] - enemy[0], s.position[1] - enemy[1]]
+    		target = [s.position[0] + escape_vector[0],s.position[1] + escape_vector[1]]
+    		s.move(target)
+    	}else{
+		if(s.energy == 0){
+			s.set_mark("harvester-harvesting")
+		}else if(s.energy == s.energy_capacity){
+			s.set_mark("harvester-dumping")
 		}
-		current_goal = s1.mark.split("-")[1]
-		target = memory.star.position
-		if(current_goal == "harvesting"){
-			if(distance(s1.position,target) > 200){
-				s1.move(target)
-			}
-			s1.energize(s1)
-		}else{
-			if(distance(s1.position,outpost.position) > 200){
-				s1.move(outpost.position)
-			}
-			s1.energize(outpost)
+			current_goal = s.mark.split("-")[1]
+			target = star_p89.position
+			if(current_goal == "harvesting"){
+				if(distance(s.position,target) > 200){
+					s.move(target)
+				}
+				s.energize(s)
+			}else{
+				if(distance(s.position,outpost.position) > 200){
+					s.move(outpost.position)
+				}
+				s.energize(outpost)
 		}
+	}
 }
 
 function harvest(s){
@@ -187,14 +226,20 @@ function get_role(role){
 }
 
 function assign_role(s){
-	report = role_report()
-	if(star_p89.energy > 0 && report.harvesters > 50){
-		s.set_mark("attacker")
-	}else if(report.defenders < 5 && report.harvesters > 10 && tick > 100){
-		s.set_mark("defender")
-	}else{
-		s.set_mark("harvester")
-	}
+    
+    if(ALL_ATTACK){
+        s.set_mark("attacker")
+    }else{
+        report = role_report()
+    	if(star_p89.energy > 0 && report.harvesters > 50){
+    		s.set_mark("attacker")
+    	}else if(report.defenders < 5 && report.harvesters > 10 && tick > 100){
+    		s.set_mark("defender")
+    	}else{
+    		s.set_mark("harvester")
+    	}
+    }
+	
 }
 
 function distance(l1,l2){
